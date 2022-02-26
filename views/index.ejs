@@ -22,28 +22,25 @@
         }
 
         const data = {
-            day: new Date(),
+            day: new Date(`<%- date %>`),
             dayText: "",
-            dayEvents: [],
+            dayEvents: JSON.parse(`<%- JSON.stringify(day?.list || []) %>`),
             weekText: "",
-            weekEvents: [],
-            changeScheduleDay() {
-                const code = prompt("Enter a day code (i.e. ABLK, DAY5, etc)")
-                if (code == undefined) return;
-                fetch('/day', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        date: this.day,
-                        day: code
-                    }),
-                    headers: {
-                        "content-type": "application/json"
-                    }
-                })
-                //make it reload the page here
-                    .then(() => {})
-                
-            },
+            weekEvents: JSON.parse(`<%- JSON.stringify(week?.list || []) %>`),
+            // changeScheduleDay() {
+            //     const code = prompt("Enter a day code (i.e. ABLK, DAY5, etc)")
+            //     if (code == undefined) return;
+            //     fetch('/day', {
+            //         method: 'POST',
+            //         body: JSON.stringify({
+            //             date: this.day,
+            //             day: code
+            //         }),
+            //         headers: {
+            //             "content-type": "application/json"
+            //         }
+            //     })
+            // },
             addWeekElement() {
                 this.weekEvents.push(this.weekText)
                 const weekCode = this.day.getWeek() * this.day.getFullYear()
@@ -57,45 +54,127 @@
                         "content-type": "application/json"
                     }
                 })
+            },
+            addDayElement() {
+                this.dayEvents.push(this.dayText)
+                const now = `${this.day.getMonth() + 1}-${this.day.getDate()}-${this.day.getFullYear() % 100}`
+                fetch('/date', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        list: this.dayEvents,
+                        date: now
+                    }),
+                    headers: {
+                        "content-type": "application/json"
+                    }
+                })
+            },
+            deleteWeekItem(item) {
+                return () => {
+                    const weekCode = this.day.getWeek() * this.day.getFullYear()
+                    fetch('/week', {
+                        method: 'DELETE',
+                        body: JSON.stringify({
+                            item,
+                            week: weekCode
+                        }),
+                        headers: {
+                            "content-type": "application/json"
+                        }
+                    })
+                        .then(e => {
+                            if (e.status == 200) {
+                                this.weekEvents = this.weekEvents.filter(e => e != item)
+                            }
+                        })
+                }
+            },
+            deleteDayItem(item) {
+                return () => {
+                    const now = `${this.day.getMonth() + 1}-${this.day.getDate()}-${this.day.getFullYear() % 100}`
+                    fetch('/date', {
+                        method: 'DELETE',
+                        body: JSON.stringify({
+                            item,
+                            date: now
+                        }),
+                        headers: {
+                            "content-type": "application/json"
+                        }
+                    })
+                        .then(e => {
+                            if (e.status == 200) {
+                                this.dayEvents = this.dayEvents.filter(e => e != item)
+                            }
+                        })
+                }
+            },
+            changeDate() {
+                const date = document.querySelector('#date')
+                if (date.valueAsDate == null) return
+                //why this replace is needed is truly beyond me i hate javascript dates with a burning passion
+                //who at google (or ISO?) thought it was necessary to change date parse based on a / vs a - ?????????
+                const dateObj = new Date(date.value.replace('-', '/'))
+                window.location.href = "/?date=" + dateObj.toDateString()
             }
         }
     </script>
 </head>
 <body class="p-4" x-data="data">
-    <div class="flex items-center mb-4">
+    <div class="flex items-center mb-4"> 
         <img class="h-14 w-14 mr-2" src="https://wadaily.co/logo.png" />
         <div>
             <p class="text-2xl">WADaily Configuration Panel</p>
-            <p>Logged in as someone</p>
+            <p>A geoge.co service</p>
         </div>
     </div>
     <p>Viewing info for <span x-text="day"></span></p>
     <div class="flex mt-2">
         <p class="mr-3">Select a new date</p>
-        <input type="date" />
-        <button class="bg-gray-400 text-white px-4 ml-3">Go</button>
+        <input type="date" id="date" />
+        <button class="bg-gray-400 text-white px-4 ml-3" x-on:click="changeDate">Go</button>
     </div>
     <hr class="my-5">
-    <p class="text-lg">Today's schedule</p>
+    <!-- <p class="text-lg">Today's schedule</p>
     <p>Currently set to ABLK (A Block)</p>
-    <!-- <button class="bg-gray-400 text-white px-4 my-2">Trigger Veracross Reupdate</button> -->
+    <button class="bg-gray-400 text-white px-4 my-2">Trigger Veracross Reupdate</button>
     <br>
     <button class="bg-gray-400 text-white px-4 mb-2" x-on:click="changeScheduleDay">Change</button>
-    <hr class="my-5">
+    <hr class="my-5"> -->
+
+
     <p class="text-lg">Today's announcements</p>
     <template x-if="dayEvents.length == 0">
         <p class="text-gray-600">No events listed</p>
+    </template>
+    <template x-for="item in dayEvents">
+        <div class="flex">
+            <p class="mr-2">-</p>
+            <p x-text="item"></p>
+            <a class="ml-3 text-red-600 underline cursor-pointer" x-on:click="deleteDayItem(item)">delete</a>
+        </div>
     </template>
     <p class="mt-3">Add an announcement</p>
     <div>
         <textarea x-model="dayText" placeholder="New announcement for day" class="w-72 border-2 border-gray-500 p-1"></textarea>
         <br>
-        <button class="bg-gray-400 text-white px-4" x-on:click="">Add</button>
+        <button class="bg-gray-400 text-white px-4" x-on:click="addDayElement">Add</button>
     </div>
+
+
     <hr class="my-5">
+
+
     <p class="text-lg">Weekly announcements</p>
-    <template x-if="dayEvents.length == 0">
+    <template x-if="weekEvents.length == 0">
         <p class="text-gray-600">No events listed</p>
+    </template>
+    <template x-for="item in weekEvents">
+        <div class="flex">
+            <p class="mr-2">-</p>
+            <p x-text="item"></p>
+            <a class="ml-3 text-red-600 underline cursor-pointer" x-on:click="deleteWeekItem(item)">delete</a>
+        </div>
     </template>
     <p class="mt-3">Add an announcement</p>
     <div>
@@ -103,5 +182,6 @@
         <br>
         <button class="bg-gray-400 text-white px-4" x-on:click="addWeekElement">Add</button>
     </div>
+    <p class="mt-3">This software is probably buggy. Notice a problem? Tell George at <a class="underline" href="mailto:me@georgeparks.me">me@georgeparks.me</a></p>
 </body>
 </html>

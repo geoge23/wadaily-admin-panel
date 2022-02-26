@@ -38,31 +38,37 @@ const Announcement = mongoose.model('announcements', {
     list: [String]
 })
 
+
 app.get('/', async (req, res) => {
-    const {date: d} = req.params
-    const date = new Date(d)
+    const {date: d} = req.query
+    let time = d ? new Date(d) : new Date()
+    if (isNaN(time.getWeek())) time = new Date()
+    const now = `${time.getMonth() + 1}-${time.getDate()}-${time.getFullYear() % 100}`
 
     const day = await Announcement.findOne({
         type: 'day',
-        date: '1-2-3'
+        date: now
     })
     const week = await Announcement.findOne({
         type: 'week',
-        week: date.getWeek() * date.getFullYear()
+        week: time.getWeek() * time.getFullYear()
     })
     
     res.render('index.ejs', {
-        date,
+        date: time.toDateString(),
         day,
         week
     })
 })
 
-app.post('/day', (req, res) => {
-    //day is sch day, date is date to change
-    const {day, date} = req.body;
-    res.send()
-})
+// app.post('/day', (req, res) => {
+//     //day is sch day, date is date to change
+//     const {day, date} = req.body;
+//     res.send()
+// })
+
+
+//week endpoints
 
 app.get('/week', async (req, res) => {
     const {week} = req.query;
@@ -78,7 +84,6 @@ app.get('/week', async (req, res) => {
 })
 
 app.post('/week', async (req, res) => {
-    console.log(req.body)
     const {list, week} = req.body;
     let doc = await Announcement.findOne({
         type: 'week',
@@ -94,6 +99,23 @@ app.post('/week', async (req, res) => {
     await doc.save();
     res.send();
 })
+
+app.delete('/week', async (req, res) => {
+    const {week, item} = req.body;
+    await Announcement.updateOne({
+        type: 'week',
+        week
+    },
+    {
+        $pull: {
+            list: item
+        }
+    })
+    res.send()
+})
+
+
+//day endpoints
 
 app.get('/date', async (req, res) => {
     const {date} = req.query;
@@ -123,6 +145,20 @@ app.post('/date', async (req, res) => {
     doc.list = list;
     await doc.save();
     res.send();
+})
+
+app.delete('/date', async (req, res) => {
+    const {date, item} = req.body;
+    await Announcement.updateOne({
+        type: 'day',
+        date
+    },
+    {
+        $pull: {
+            list: item
+        }
+    })
+    res.send()
 })
 
 app.listen(3001)
