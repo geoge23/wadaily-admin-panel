@@ -24,9 +24,9 @@
         const data = {
             day: new Date(`<%- date %>`),
             dayText: "",
-            dayEvents: JSON.parse(`<%- JSON.stringify(day?.list || []) %>`),
+            dayEvents: JSON.parse(`<%- JSON.stringify(day?.list || []).replaceAll("\\","\\\\") %>`),
             weekText: "",
-            weekEvents: JSON.parse(`<%- JSON.stringify(week?.list || []) %>`),
+            weekEvents: JSON.parse(`<%- JSON.stringify(week?.list || []).replaceAll("\\","\\\\") %>`),
             // changeScheduleDay() {
             //     const code = prompt("Enter a day code (i.e. ABLK, DAY5, etc)")
             //     if (code == undefined) return;
