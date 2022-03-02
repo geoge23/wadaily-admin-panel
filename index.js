@@ -14,6 +14,7 @@ Date.prototype.getWeek = function() {
 import express from 'express'
 import dotenv from 'dotenv'
 import mongoose from 'mongoose'
+import e from 'express';
 dotenv.config()
 
 const app = express()
@@ -38,6 +39,49 @@ const Announcement = mongoose.model('announcements', {
     list: [String]
 })
 
+const Schedule = mongoose.model('schedules', {
+    "name": {
+        type: String,
+        required: true
+    },
+    "friendlyName": {
+        type: String,
+        required: true
+    },
+    "schedule": [{
+        "name": {
+            type: String,
+            required: true
+        },
+        "code": {
+            type: String,
+            required: true
+        },
+        "startTime": {
+            type: String,
+            required: true
+        },
+        "endTime": {
+            type: String,
+            required: true
+        }
+    }]
+})
+
+const Day = mongoose.model('days', {
+    date: {
+        type: String,
+        required: true
+    },
+    schedule: {
+        type: String,
+        required: true
+    }
+})
+
+const availableSchedules = (await Schedule.find({})).map(e => e.name)
+availableSchedules.push("NONE")
+
 
 app.get('/', async (req, res) => {
     const {date: d} = req.query
@@ -53,19 +97,32 @@ app.get('/', async (req, res) => {
         type: 'week',
         week: time.getWeek() * time.getFullYear()
     })
+
+    const schDay = (await Day.findOne({date: now}))?.schedule || "NONE"
     
     res.render('index.ejs', {
         date: time.toDateString(),
         day,
-        week
+        schDay,
+        week,
+        availableSchedules
     })
 })
 
-// app.post('/day', (req, res) => {
-//     //day is sch day, date is date to change
-//     const {day, date} = req.body;
-//     res.send()
-// })
+app.post('/day', async (req, res) => {
+    //day is sch day, date is date to change
+    const {day, date} = req.body;
+    if (day == "NONE") {
+        await Day.deleteOne({date})
+    } else {
+        await Day.updateOne({date}, {
+            $set: {
+                schedule: day
+            }
+        }, {upsert: true})
+    }
+    res.send()
+})
 
 
 //week endpoints

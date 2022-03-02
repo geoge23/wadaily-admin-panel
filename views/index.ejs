@@ -23,24 +23,32 @@
 
         const data = {
             day: new Date(`<%- date %>`),
+            get waDay() {
+                return `${this.day.getMonth() + 1}-${this.day.getDate()}-${this.day.getFullYear() % 100}`
+            },
+            schDay: `<%- schDay %>`,
             dayText: "",
             dayEvents: JSON.parse(`<%- JSON.stringify(day?.list || []).replaceAll("\\","\\\\") %>`),
             weekText: "",
             weekEvents: JSON.parse(`<%- JSON.stringify(week?.list || []).replaceAll("\\","\\\\") %>`),
-            // changeScheduleDay() {
-            //     const code = prompt("Enter a day code (i.e. ABLK, DAY5, etc)")
-            //     if (code == undefined) return;
-            //     fetch('/day', {
-            //         method: 'POST',
-            //         body: JSON.stringify({
-            //             date: this.day,
-            //             day: code
-            //         }),
-            //         headers: {
-            //             "content-type": "application/json"
-            //         }
-            //     })
-            // },
+            availableSchedules: JSON.parse(`<%- JSON.stringify(availableSchedules.sort()) %>`),
+            changeScheduleDay() {
+                const code = document.querySelector('#sch').value
+                fetch('/day', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        date: this.waDay,
+                        day: code
+                    }),
+                    headers: {
+                        "content-type": "application/json"
+                    }
+                })
+                    .then(e => {
+                        if (e.status == 200) {this.schDay = code;}
+                    })
+                    .catch(e => this.handleError(e))
+            },
             addWeekElement() {
                 this.weekEvents.push(this.weekText)
                 const weekCode = this.day.getWeek() * this.day.getFullYear()
@@ -54,20 +62,23 @@
                         "content-type": "application/json"
                     }
                 })
+                    .catch(e => this.handleError(e))
+                this.weekText = ""
             },
             addDayElement() {
                 this.dayEvents.push(this.dayText)
-                const now = `${this.day.getMonth() + 1}-${this.day.getDate()}-${this.day.getFullYear() % 100}`
                 fetch('/date', {
                     method: 'POST',
                     body: JSON.stringify({
                         list: this.dayEvents,
-                        date: now
+                        date: this.waDay
                     }),
                     headers: {
                         "content-type": "application/json"
                     }
                 })
+                    .catch(e => this.handleError(e))
+                this.dayText = ""
             },
             deleteWeekItem(item) {
                 return () => {
@@ -87,16 +98,16 @@
                                 this.weekEvents = this.weekEvents.filter(e => e != item)
                             }
                         })
+                        .catch(e => this.handleError(e))
                 }
             },
             deleteDayItem(item) {
                 return () => {
-                    const now = `${this.day.getMonth() + 1}-${this.day.getDate()}-${this.day.getFullYear() % 100}`
                     fetch('/date', {
                         method: 'DELETE',
                         body: JSON.stringify({
                             item,
-                            date: now
+                            date: this.waDay
                         }),
                         headers: {
                             "content-type": "application/json"
@@ -107,6 +118,7 @@
                                 this.dayEvents = this.dayEvents.filter(e => e != item)
                             }
                         })
+                        .catch(e => this.handleError(e))
                 }
             },
             changeDate() {
@@ -116,6 +128,9 @@
                 //who at google (or ISO?) thought it was necessary to change date parse based on a / vs a - ?????????
                 const dateObj = new Date(date.value.replace('-', '/'))
                 window.location.href = "/?date=" + dateObj.toDateString()
+            },
+            handleError(e) {
+                alert("An error occurred: " + e + "\n Please refresh the page and try again")
             }
         }
     </script>
@@ -128,19 +143,22 @@
             <p>A geoge.co service</p>
         </div>
     </div>
-    <p>Viewing info for <span x-text="day"></span></p>
+    <p>Viewing info for <span x-text="waDay"></span></p>
     <div class="flex mt-2">
         <p class="mr-3">Select a new date</p>
-        <input type="date" id="date" />
+        <input type="date" id="date" class="border-2" />
         <button class="bg-gray-400 text-white px-4 ml-3" x-on:click="changeDate">Go</button>
     </div>
     <hr class="my-5">
-    <!-- <p class="text-lg">Today's schedule</p>
-    <p>Currently set to ABLK (A Block)</p>
-    <button class="bg-gray-400 text-white px-4 my-2">Trigger Veracross Reupdate</button>
-    <br>
-    <button class="bg-gray-400 text-white px-4 mb-2" x-on:click="changeScheduleDay">Change</button>
-    <hr class="my-5"> -->
+    <p class="text-lg">Today's schedule</p>
+    <p>Currently set to <span x-text="schDay"></span></p>
+    New Schedule: <select id="sch" class="border-2">
+        <template x-for="sch in availableSchedules">
+            <option x-text="sch" x-bind:value="sch" x-bind:selected="sch == schDay"></option>
+        </template>
+    </select>
+    <button class="bg-gray-400 text-white px-4 my-2" x-on:click="changeScheduleDay">Change</button>
+    <hr class="my-5">
 
 
     <p class="text-lg">Today's announcements</p>
